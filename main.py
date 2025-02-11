@@ -72,7 +72,7 @@ def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blo
         return {"status": "error", "message": str(e)}
 
 # Streamlitのメイン処理
-st.title("Dify ワークフロー実行")
+st.title("設計書レビュー")
 st.write("2つのテキストファイルとレビュー項目を指定して、Difyワークフローを実行します。")
 
 # ファイルアップロードウィジェット
