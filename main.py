@@ -78,7 +78,7 @@ if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
 
 #  Streamlitのページ設定
-st.write("レビューした項目を入力してください。")
+st.write("レビューしたい項目を入力してください。")
 
 
 # チャット履歴の表示
