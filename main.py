@@ -133,7 +133,7 @@ def run_workflow2(file_id1, file_id2, review_request_id, user, response_mode="bl
 
 # Streamlitのメイン処理
 st.title("設計書レビュー")
-st.write("2つのテキストファイルとレビュー項目を指定して、Difyワークフローを実行します。")
+st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
 
 # サイドバーにファイルアップロードウィジェットを配置
 with st.sidebar:
