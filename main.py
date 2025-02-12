@@ -7,12 +7,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Streamlitのメイン処理
-st.title("設計書レビュー")
+st.title("設計書レビューAI")
 st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
 
 
-
-#####################################################################
+#######ヒアリング部分#######################################################
 # Difyのchat-messagesエンドポイント
 API_URL = "https://api.dify.ai/v1/chat-messages"
 
@@ -72,7 +71,6 @@ def continue_conversation(conversation_id: str, query: str):
         return ""
 
 
-
 # セッション状態の初期化
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -80,8 +78,8 @@ if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
 
 #  Streamlitのページ設定
-st.title("Dify Chat Bot")
-st.session_state.messages.append({"role": "assistant", "content": "レビュー項目を入力してください"})
+st.title("設計書レビューAI")
+
 
 # チャット履歴の表示
 for message in st.session_state.messages:
@@ -247,40 +245,41 @@ with st.sidebar:
     st.header("入力項目")
     file1 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
     file2 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
-    review_request = st.text_area("レビュー項目を入力", help="レビューで確認してほしい項目を入力してください")
+    # review_request = st.text_area("レビュー項目を入力", help="レビューで確認してほしい項目を入力してください")
 
 # ユーザー
 user = "difyuser"
 
 # サイドバーに実行ボタンを配置
 if st.sidebar.button("ワークフローを実行"):
-    if file1 is not None and file2 is not None and review_request:
+    if file1 is not None and file2 is not None:
         with st.spinner("処理中..."):
+            # ヒアリング部分の最後の応答を取得
+            last_assistant_message = next((msg["content"] for msg in reversed(st.session_state.messages) if msg["role"] == "assistant"), None)
+            if last_assistant_message:
+                review_request = last_assistant_message
+            
             # ファイルをアップロード
             file_id1 = upload_file2(file1.getvalue(), file1.name, user)
             file_id2 = upload_file2(file2.getvalue(), file2.name, user)
             
-            # レビュー項目をテキストファイルとしてアップロード
+            # レビュー項目をテキストファイルとしてアップロード（最後のアシスタントの応答を使用）
             review_request_id = upload_file1(review_request.encode(), "review_request.txt", user)
 
             if review_request_id:
                 # ワークフローを実行
                 result1 = run_workflow1(review_request_id, user)
-                
-                # 結果を表示
-                st.success("ワークフローが正常に実行されました")
+                st.success("プロンプト生成ワークフローが正常に実行されました")
                 st.write(result1)
-                # st.write(result1["data"]["outputs"]["text"])
-            
-            if file_id1 and file_id2 :
-                # ワークフローを実行
-                result2 = run_workflow2(file_id1, file_id2, review_request_id, user)
-                
-                # 結果を表示
-                st.success("ワークフローが正常に実行されました")
-                st.write(result2)
-                # st.write(result2["data"]["outputs"]["text"])
+
+                if file_id1 and file_id2:
+                    # 設計書レビューワークフローを実行
+                    result2 = run_workflow2(file_id1, file_id2, review_request_id, user)
+                    st.success("設計書レビューワークフローが正常に実行されました")
+                    st.write(result2["data"]["outputs"]["text"])
+                else:
+                    st.error("ファイルのアップロードに失敗しました")
             else:
-                st.error("ファイルのアップロードに失敗しました")
+                st.error("レビュー項目のアップロードに失敗しました")
     else:
         st.warning("2つのファイルを選択し、レビュー項目を入力してください")
