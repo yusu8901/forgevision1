@@ -6,18 +6,18 @@ from dotenv import load_dotenv
 from openai import OpenAI
 load_dotenv()
 
+# OpenAI APIクライアントの初期化
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# システムプロンプトの設定
+if "openai_model" not in st.session_state:
+    st.session_state["openai_model"] = "gpt-4o"
+
 # Streamlitのメイン処理
 st.title("設計書レビューAI")
 st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
 
 
 #######ヒアリング部分#######################################################
-# OpenAI APIクライアントの初期化
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# システムプロンプトの設定
-if "openai_model" not in st.session_state:
-    st.session_state["openai_model"] = "gpt-4o"
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -77,33 +77,7 @@ def upload_file1(file_content, filename, user):
     except Exception as e:
         st.error(f"エラーが発生しました: {str(e)}")
         return None
-
-# 設計書レビュー用
-def upload_file2(file_content, filename, user):
-    upload_url = "https://api.dify.ai/v1/files/upload"
-    headers = {
-        "Authorization": f"Bearer {os.getenv('API_KEY2')}",
-    }
     
-    try:
-        files = {
-            'file': (filename, file_content, 'text/plain')
-        }
-        data = {
-            "user": user,
-            "type": "TXT"
-        }
-        
-        response = requests.post(upload_url, headers=headers, files=files, data=data)
-        if response.status_code == 201:
-            return response.json().get("id")
-        else:
-            st.error(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
-            return None
-    except Exception as e:
-        st.error(f"エラーが発生しました: {str(e)}")
-        return None
-
 # プロンプト生成用
 def run_workflow1(review_request_id, user, response_mode="blocking"):
     workflow_url = "https://api.dify.ai/v1/workflows/run"
@@ -135,6 +109,34 @@ def run_workflow1(review_request_id, user, response_mode="blocking"):
         st.error(f"エラーが発生しました: {str(e)}")
         return {"status": "error", "message": str(e)}
     
+
+# 設計書レビュー用
+def upload_file2(file_content, filename, user):
+    upload_url = "https://api.dify.ai/v1/files/upload"
+    headers = {
+        "Authorization": f"Bearer {os.getenv('API_KEY2')}",
+    }
+    
+    try:
+        files = {
+            'file': (filename, file_content, 'text/plain')
+        }
+        data = {
+            "user": user,
+            "type": "TXT"
+        }
+        
+        response = requests.post(upload_url, headers=headers, files=files, data=data)
+        if response.status_code == 201:
+            return response.json().get("id")
+        else:
+            st.error(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"エラーが発生しました: {str(e)}")
+        return None
+
+
 # 設計書レビュー用
 def run_workflow2(file_id1, file_id2, review_request_id, user, response_mode="blocking"):
     workflow_url = "https://api.dify.ai/v1/workflows/run"
