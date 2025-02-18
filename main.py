@@ -22,13 +22,15 @@ st.write("2つのファイルとレビュー項目を指定して、ワークフ
 
 #######OPENAI API#######################################################
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [
+if "messages1" not in st.session_state:
+    st.session_state.messages1 = [
         {
             "role": "system",
             "content": (
                 "基本設計書のレビューを行います。ユーザーにレビューしたい項目をヒアリングしてください。"
-                "返答する際は、ユーザーがレビューしたい項目と、追加でレビューした方がいい項目をそれぞれリスト形式で出力してください。"
+                "返答する際は、ユーザーがレビューしたい項目「レビュー決定項目」と、追加でレビューした方がいい項目「提案項目」をそれぞれリスト形式で出力してください。"
+                "追加でレビューした方がいい項目について、ユーザーがレビューしたい項目をもっと細分化したレビュー項目を提案してください。"
+                "提案したレビュー項目について、ユーザーが承諾すれば、「レビュー決定項目」の中に含めてください。"
             )
         },
         {"role": "assistant", "content": "設計書レビューを行います！レビューしたい項目を教えてください！"}
@@ -42,7 +44,7 @@ if "messages2" not in st.session_state:
     ]
 
 # チャット履歴の表示（ワークフロー実行前）
-for message in st.session_state.messages:
+for message in st.session_state.messages1:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
@@ -56,7 +58,7 @@ if st.session_state.workflow_executed:
 if prompt := st.chat_input("メッセージを入力してください"):
     if not st.session_state.workflow_executed:
         # ワークフロー実行前の処理
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages1.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -66,12 +68,12 @@ if prompt := st.chat_input("メッセージを入力してください"):
                 model=st.session_state["openai_model"],
                 messages=[
                     {"role": m["role"], "content": m["content"]}
-                    for m in st.session_state.messages
+                    for m in st.session_state.messages1
                 ],
                 stream=True,
             )
             response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.messages1.append({"role": "assistant", "content": response})
     else:
         # ワークフロー実行後の処理
         st.session_state.messages2.append({"role": "user", "content": prompt})
@@ -82,7 +84,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
                 model=st.session_state["openai_model"],
-                messages=[
+                messages1=[
                     {"role": m["role"], "content": m["content"]}
                     for m in st.session_state.messages2
                 ],
@@ -232,7 +234,7 @@ if st.sidebar.button("ワークフローを実行"):
     if file1 is not None and file2 is not None:
         with st.spinner("処理中..."):
             # ヒアリング部分の最後の応答を取得
-            last_assistant_message = next((msg["content"] for msg in reversed(st.session_state.messages) if msg["role"] == "assistant"), None)
+            last_assistant_message = next((msg["content"] for msg in reversed(st.session_state.messages1) if msg["role"] == "assistant"), None)
             if last_assistant_message:
                 review_request = last_assistant_message
             
