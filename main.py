@@ -10,11 +10,15 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # システムプロンプトの設定
 if "openai_model" not in st.session_state:
-    st.session_state["openai_model"] = "gpt-4o"
+    st.session_state["openai_model"] = "o3-mini"
 
 # ワークフロー実行状態の追跡
 if "workflow_executed" not in st.session_state:
     st.session_state.workflow_executed = False
+
+# レビュー決定項目の状態管理
+if "request_response" not in st.session_state:
+    st.session_state["request_response"] = ""
 
 # Streamlitのメイン処理
 st.title("設計書レビューAI")
@@ -27,10 +31,30 @@ if "messages1" not in st.session_state:
         {
             "role": "system",
             "content": (
-                "基本設計書のレビューを行います。ユーザーにレビューしたい項目をヒアリングしてください。"
-                "返答する際は、ユーザーがレビューしたい項目「レビュー決定項目」と、追加でレビューした方がいい項目「提案項目」をそれぞれリスト形式で出力してください。"
-                "追加でレビューした方がいい項目について、ユーザーがレビューしたい項目をもっと細分化したレビュー項目を提案してください。"
-                "提案したレビュー項目について、ユーザーが承諾すれば、「レビュー決定項目」の中に含めてください。"
+                """
+                基本設計書のレビューを行います。ユーザーにレビューしたい項目をヒアリングしてください。
+                出力には、次の項目を絶対に絶対に絶対に含めて下さい。現在までの会話でユーザーがレビューしたい項目「レビュー決定項目」と、追加でレビューした方がいい項目「提案項目」をそれぞれリスト形式で構造的に絶対に含めてください。
+                追加でレビューした方がいい項目について、ユーザーがレビューしたい項目をもっと細分化したレビュー項目を提案してください。
+                提案したレビュー項目について、ユーザーが承諾すれば、「レビュー決定項目」の中に含めてください。
+                メッセージの最後に必ず次の文章を付けてください。現在のレビュー決定項目でよろしければ、左側の「設計書レビュー開始」ボタンを押してください!
+                出力に【レビュー決定項目】 は絶対に絶対に含めてください。
+
+                出力形式：
+
+                ## 【レビュー決定項目】 
+                - ～～
+                    - ～～
+                - ～～
+                    - ～～
+
+                ## 【提案項目】
+                - ～～
+                    - ～～
+                - ～～
+                    - ～～
+
+                現在のレビュー決定項目でよろしければ、左側の「設計書レビュー開始」ボタンを押してください!
+                """
             )
         },
         {"role": "assistant", "content": "設計書レビューを行います！レビューしたい項目を教えてください！"}
@@ -65,7 +89,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
         # OpenAI APIでの応答処理
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model=st.session_state["openai_model"],
+                model="o1",
                 messages=[
                     {"role": m["role"], "content": m["content"]}
                     for m in st.session_state.messages1
@@ -74,6 +98,17 @@ if prompt := st.chat_input("メッセージを入力してください"):
             )
             response = st.write_stream(stream)
         st.session_state.messages1.append({"role": "assistant", "content": response})
+
+        # レビュー決定項目の取得
+        response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "渡されたテキストから、レビュー決定項目だけを抜き出して、リスト形式で出力してください。それ以外のことは一切出力しないでください"},
+                    {"role": "user", "content": response}
+                ]
+            )
+        st.session_state["request_response"] = response.choices[0].message.content
+
     else:
         # ワークフロー実行後の処理
         st.session_state.messages2.append({"role": "user", "content": prompt})
@@ -225,12 +260,16 @@ with st.sidebar:
     st.header("入力項目")
     file1 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
     file2 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
+    
+    if st.session_state.request_response:
+        st.write("現在のレビュー決定項目：")
+        st.write(st.session_state.request_response)
 
 # ユーザー
 user = "difyuser"
 
 # サイドバーに実行ボタンを配置
-if st.sidebar.button("ワークフローを実行"):
+if st.sidebar.button("設計書レビュー開始"):
     if file1 is not None and file2 is not None:
         with st.spinner("処理中..."):
             # ヒアリング部分の最後の応答を取得
