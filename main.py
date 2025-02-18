@@ -12,45 +12,78 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-4o"
 
+# ワークフロー実行状態の追跡
+if "workflow_executed" not in st.session_state:
+    st.session_state.workflow_executed = False
+
 # Streamlitのメイン処理
 st.title("設計書レビューAI")
 st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
 
-
-#######ヒアリング部分#######################################################
+#######OPENAI API#######################################################
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": "関西弁で会話してください"}
     ]
 
-# チャット履歴の表示
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+if "messages2" not in st.session_state:
+    st.session_state.messages2 = [
+        {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"}
+    ]
+
+# チャット履歴の表示（ワークフロー実行前）
+if not st.session_state.workflow_executed:
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+# チャット履歴の表示（ワークフロー実行後）
+if st.session_state.workflow_executed:
+    for message in st.session_state.messages2:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
 # チャット入力と応答の処理
 if prompt := st.chat_input("メッセージを入力してください"):
-    # ユーザーメッセージの表示
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    if not st.session_state.workflow_executed:
+        # ワークフロー実行前の処理
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-    # OpenAI APIでの応答処理
-    with st.chat_message("assistant"):
-        stream = client.chat.completions.create(
-            model=st.session_state["openai_model"],
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
-        response = st.write_stream(stream)
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        # OpenAI APIでの応答処理
+        with st.chat_message("assistant"):
+            stream = client.chat.completions.create(
+                model=st.session_state["openai_model"],
+                messages=[
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages
+                ],
+                stream=True,
+            )
+            response = st.write_stream(stream)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+    else:
+        # ワークフロー実行後の処理
+        st.session_state.messages2.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # OpenAI APIでの応答処理
+        with st.chat_message("assistant"):
+            stream = client.chat.completions.create(
+                model=st.session_state["openai_model"],
+                messages=[
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages2
+                ],
+                stream=True,
+            )
+            response = st.write_stream(stream)
+        st.session_state.messages2.append({"role": "assistant", "content": response})
 
 #####################################################################
-
 
 # プロンプト生成用
 def upload_file1(file_content, filename, user):
@@ -136,7 +169,6 @@ def upload_file2(file_content, filename, user):
         st.error(f"エラーが発生しました: {str(e)}")
         return None
 
-
 # 設計書レビュー用
 def run_workflow2(file_id1, file_id2, review_request_id, user, response_mode="blocking"):
     workflow_url = "https://api.dify.ai/v1/workflows/run"
@@ -178,14 +210,11 @@ def run_workflow2(file_id1, file_id2, review_request_id, user, response_mode="bl
         st.error(f"エラーが発生しました: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-
-
 # サイドバーにファイルアップロードウィジェットを配置
 with st.sidebar:
     st.header("入力項目")
     file1 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
     file2 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
-    # review_request = st.text_area("レビュー項目を入力", help="レビューで確認してほしい項目を入力してください")
 
 # ユーザー
 user = "difyuser"
@@ -217,9 +246,17 @@ if st.sidebar.button("ワークフローを実行"):
                     result2 = run_workflow2(file_id1, file_id2, review_request_id, user)
                     st.success("設計書レビューワークフローが正常に実行されました")
                     st.write(result2["data"]["outputs"]["text"])
+                    # ワークフロー実行フラグを設定
+                    st.session_state.workflow_executed = True
+                    # messages2の初期化
+                    st.session_state.messages2 = [
+                        {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"},
+                        {"role": "user", "content": result2["data"]["outputs"]["text"]}
+                    ]
                 else:
                     st.error("ファイルのアップロードに失敗しました")
             else:
                 st.error("レビュー項目のアップロードに失敗しました")
     else:
         st.warning("2つのファイルを選択し、レビュー項目を入力してください")
+
