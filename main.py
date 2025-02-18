@@ -24,8 +24,17 @@ st.write("2つのファイルとレビュー項目を指定して、ワークフ
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "system", "content": "関西弁で会話してください"}
+        {
+            "role": "system",
+            "content": (
+                "基本設計書のレビューを行います。ユーザーにレビューしたい項目をヒアリングしてください。"
+                "返答する際は、ユーザーがレビューしたい項目と、追加でレビューした方がいい項目をそれぞれリスト形式で出力してください。"
+            )
+        },
+        {"role": "assistant", "content": "設計書レビューを行います！レビューしたい項目を教えてください！"}
     ]
+
+
 
 if "messages2" not in st.session_state:
     st.session_state.messages2 = [
@@ -33,10 +42,9 @@ if "messages2" not in st.session_state:
     ]
 
 # チャット履歴の表示（ワークフロー実行前）
-if not st.session_state.workflow_executed:
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 # チャット履歴の表示（ワークフロー実行後）
 if st.session_state.workflow_executed:
@@ -244,15 +252,19 @@ if st.sidebar.button("ワークフローを実行"):
                 if file_id1 and file_id2:
                     # 設計書レビューワークフローを実行
                     result2 = run_workflow2(file_id1, file_id2, review_request_id, user)
-                    st.success("設計書レビューワークフローが正常に実行されました")
-                    st.write(result2["data"]["outputs"]["text"])
-                    # ワークフロー実行フラグを設定
-                    st.session_state.workflow_executed = True
                     # messages2の初期化
                     st.session_state.messages2 = [
                         {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"},
-                        {"role": "user", "content": result2["data"]["outputs"]["text"]}
+                        {"role": "assistant", "content": result2["data"]["outputs"]["text"]}
                     ]
+                    # ワークフロー実行フラグを設定
+                    st.session_state.workflow_executed = True
+                    st.success("設計書レビューワークフローが正常に実行されました")
+                    
+                    # チャット履歴を即座に表示
+                    for message in st.session_state.messages2:
+                        with st.chat_message(message["role"]):
+                            st.markdown(message["content"])
                 else:
                     st.error("ファイルのアップロードに失敗しました")
             else:
