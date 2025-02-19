@@ -24,6 +24,16 @@ if "request_response" not in st.session_state:
 st.title("設計書レビューAI")
 st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
 
+# サイドバーにファイルアップロードウィジェットを配置
+with st.sidebar:
+    st.header("入力項目")
+    file1 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
+    file2 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
+    
+    if st.session_state.request_response:
+        st.write("現在のレビュー決定項目：")
+        st.write(st.session_state.request_response)
+
 
 #############################################################
 #OPENAI API
@@ -85,7 +95,9 @@ if st.session_state.workflow_executed:
 
 # チャット入力と応答の処理
 if prompt := st.chat_input("メッセージを入力してください"):
-    if not st.session_state.workflow_executed:
+    if not file2:
+        st.warning("基本設計書をアップロードしてからチャットを開始してください。")
+    elif not st.session_state.workflow_executed:
         # ワークフロー実行前の処理
         st.session_state.messages1.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -206,15 +218,7 @@ def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blo
         st.error(f"エラーが発生しました: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-# サイドバーにファイルアップロードウィジェットを配置
-with st.sidebar:
-    st.header("入力項目")
-    file1 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
-    file2 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
-    
-    if st.session_state.request_response:
-        st.write("現在のレビュー決定項目：")
-        st.write(st.session_state.request_response)
+
 
 # ユーザー
 user = "difyuser"
