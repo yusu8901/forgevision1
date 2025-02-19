@@ -130,63 +130,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
 
 #####################################################################
 
-# プロンプト生成用
-def upload_file1(file_content, filename, user):
-    upload_url = "https://api.dify.ai/v1/files/upload"
-    headers = {
-        "Authorization": f"Bearer {os.getenv('API_KEY1')}",
-    }
-    
-    try:
-        files = {
-            'file': (filename, file_content, 'text/plain')
-        }
-        data = {
-            "user": user,
-            "type": "TXT"
-        }
-        
-        response = requests.post(upload_url, headers=headers, files=files, data=data)
-        if response.status_code == 201:
-            return response.json().get("id")
-        else:
-            st.error(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
-            return None
-    except Exception as e:
-        st.error(f"エラーが発生しました: {str(e)}")
-        return None
-    
-# プロンプト生成用
-def run_workflow1(review_request_id, user, response_mode="blocking"):
-    workflow_url = "https://api.dify.ai/v1/workflows/run"
-    headers = {
-        "Authorization": f"Bearer {os.getenv('API_KEY1')}",
-        "Content-Type": "application/json"
-    }
 
-    data = {
-        "inputs": {
-            "review_request": {
-                "transfer_method": "local_file",
-                "upload_file_id": review_request_id,
-                "type": "document"
-            }
-        },
-        "response_mode": response_mode,
-        "user": user
-    }
-
-    try:
-        response = requests.post(workflow_url, headers=headers, json=data)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"ワークフローの実行がステータス コードで失敗しました: {response.status_code}")
-            return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
-    except Exception as e:
-        st.error(f"エラーが発生しました: {str(e)}")
-        return {"status": "error", "message": str(e)}
-    
 
 # 設計書レビュー用
 def upload_file2(file_content, filename, user):
@@ -224,12 +168,12 @@ def run_workflow2(file_id1, file_id2, review_request_id, user, response_mode="bl
 
     data = {
         "inputs": {
-            "upload_file1": {
+            "file1": {
                 "transfer_method": "local_file",
                 "upload_file_id": file_id1,
                 "type": "document"
             },
-            "upload_file2": {
+            "file2": {
                 "transfer_method": "local_file",
                 "upload_file_id": file_id2,
                 "type": "document"
@@ -272,25 +216,15 @@ user = "difyuser"
 if st.sidebar.button("設計書レビュー開始"):
     if file1 is not None and file2 is not None:
         with st.spinner("処理中..."):
-            # ヒアリング部分の最後の応答を取得
-            last_assistant_message = next((msg["content"] for msg in reversed(st.session_state.messages1) if msg["role"] == "assistant"), None)
-            if last_assistant_message:
-                review_request = last_assistant_message
-            
             # ファイルをアップロード
             file_id1 = upload_file2(file1.getvalue(), file1.name, user)
             file_id2 = upload_file2(file2.getvalue(), file2.name, user)
-            
-            # レビュー項目をテキストファイルとしてアップロード（最後のアシスタントの応答を使用）
-            review_request_id = upload_file1(review_request.encode(), "review_request.txt", user)
 
-            if review_request_id:
-                # ワークフローを実行
-                result1 = run_workflow1(review_request_id, user)
-                st.success("プロンプト生成ワークフローが正常に実行されました")
-                st.write(result1)
-
-                if file_id1 and file_id2:
+            if file_id1 and file_id2:
+                # レビュー決定項目をテキストファイルとしてアップロード
+                review_request_id = upload_file2(st.session_state.request_response.encode(), "review_request.txt", user)
+                
+                if review_request_id:
                     # 設計書レビューワークフローを実行
                     result2 = run_workflow2(file_id1, file_id2, review_request_id, user)
                     # messages2の初期化
