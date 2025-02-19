@@ -68,13 +68,14 @@ if "messages2" not in st.session_state:
     ]
 
 # チャット履歴の表示（ワークフロー実行前）
-for message in st.session_state.messages1:
+for message in st.session_state.messages1[1:]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # チャット履歴の表示（ワークフロー実行後）
+# システムプロンプトと、要件定義書、基本設計書の入力は非表示([2:]でスライス)
 if st.session_state.workflow_executed:
-    for message in st.session_state.messages2:
+    for message in st.session_state.messages2[2:]:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
@@ -239,7 +240,7 @@ if st.sidebar.button("設計書レビュー開始"):
                     # messages2の初期化
                     st.session_state.messages2 = [
                         {"role": "system", "content": review_content},
-                        {"role": "user", "content": system_content, "visible": False},
+                        {"role": "user", "content": system_content},
                         {"role": "assistant", "content": result2["data"]["outputs"]["text"]},
                         
                     ]
@@ -248,7 +249,8 @@ if st.sidebar.button("設計書レビュー開始"):
                     st.success("設計書レビューワークフローが正常に実行されました")
                     
                     # チャット履歴を即座に表示
-                    for message in st.session_state.messages2:
+                    # システムプロンプトと、要件定義書、基本設計書の入力は非表示([2:]でスライス)
+                    for message in st.session_state.messages2[2:]:
                         with st.chat_message(message["role"]):
                             st.markdown(message["content"])
                 else:
