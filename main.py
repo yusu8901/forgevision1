@@ -34,12 +34,12 @@ with st.sidebar:
 #############################################################
 #OPENAI API
 
-if "messages1" not in st.session_state:
+if "messages1" not in st.session_state and file2:
     st.session_state.messages1 = [
         {
             "role": "system",
             "content": (
-                """
+                f"""
                 あなたは基本設計書レビューアシスタントです。ユーザーと対話し、レビューしたい項目をヒアリング、ついかでレビューした方がいい項目の提案をしてください。
                 出力には、次の項目を絶対に絶対に絶対に含めて下さい。現在までの会話でユーザーがレビューしたい項目「レビュー決定項目」と、追加でレビューした方がいい項目「提案項目」をそれぞれリスト形式で構造的に絶対に含めてください。
                 追加でレビューした方がいい項目について、ユーザーがレビューしたい項目をもっと細分化したレビュー項目を提案してください。
@@ -68,6 +68,7 @@ if "messages1" not in st.session_state:
 
                 参考情報：
                 基本設計書
+                
                 {file2.getvalue().decode('utf-8') if file2 else ''}
                 """
             )
@@ -77,15 +78,18 @@ if "messages1" not in st.session_state:
 
 
 
+
+
 # if "messages2" not in st.session_state:
 #     st.session_state.messages2 = [
 #         {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"}
 #     ]
 
 # チャット履歴の表示（ワークフロー実行前）
-for message in st.session_state.messages1:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+if "messages1" in st.session_state:
+    for message in st.session_state.messages1[1:]:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
 # チャット履歴の表示（ワークフロー実行後）
 # システムプロンプトと、要件定義書、基本設計書の入力は非表示([2:]でスライス)
