@@ -4,6 +4,7 @@ import json
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+import io
 load_dotenv()
 
 # OpenAI APIクライアントの初期化
@@ -28,7 +29,7 @@ st.write("まず、基本設計書をアップロードしてください。そ�
 # サイドバーにファイルアップロードウィジェットを配置
 with st.sidebar:
     st.header("入力項目")
-    file1 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
+    file1 = st.file_uploader("要件定義書をアップロード(md)（任意）", type=['md'])
     file2 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
 
 
@@ -96,7 +97,6 @@ if "messages1" not in st.session_state and file2:
 
                 現在のレビュー決定項目でよろしければ、左側の「設計書レビュー開始」ボタンを押してください!
 
-
                 参考情報：
                 基本設計書
                 
@@ -106,10 +106,6 @@ if "messages1" not in st.session_state and file2:
         },
         {"role": "assistant", "content": "設計書レビューを行います！レビューしたい項目を教えてください！"}
     ]
-
-
-
-
 
 # if "messages2" not in st.session_state:
 #     st.session_state.messages2 = [
@@ -218,6 +214,11 @@ def upload_file(file_content, filename, user):
         st.error(f"エラーが発生しました: {str(e)}")
         return None
 
+# 空のファイルをアップロードする関数
+def upload_empty_file(filename, user):
+    empty_content = ""
+    return upload_file(empty_content.encode(), filename, user)
+
 # Dify用
 def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blocking"):
     workflow_url = "https://api.dify.ai/v1/workflows/run"
@@ -259,18 +260,18 @@ def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blo
         st.error(f"エラーが発生しました: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-
-
 # ユーザー
 user = "difyuser"
 
 # サイドバーに実行ボタンを配置
 if st.sidebar.button("設計書レビュー開始"):
-    if file1 is not None and file2 is not None:
+    if file2 is not None:
         with st.spinner("レビュー中..."):
-            # ファイルをアップロード
-            file_id1 = upload_file(file1.getvalue(), file1.name, user)
+            # 基本設計書のアップロード
             file_id2 = upload_file(file2.getvalue(), file2.name, user)
+            
+            # 要件定義書のアップロード（存在しない場合は空のファイルをアップロード）
+            file_id1 = upload_empty_file("empty_requirements.md", user) if file1 is None else upload_file(file1.getvalue(), file1.name, user)
 
             if file_id1 and file_id2:
                 # レビュー決定項目をテキストファイルとしてアップロード
@@ -283,10 +284,13 @@ if st.sidebar.button("設計書レビュー開始"):
                 if review_request_id:
                     # 設計書レビューワークフローを実行
                     result2 = run_workflow(file_id1, file_id2, review_request_id, user)
-                    system_content = (
-                        f"《要件定義書》\n{file1.getvalue().decode('utf-8')}\n\n"
-                        f"《基本設計書》\n{file2.getvalue().decode('utf-8')}"
-                    )
+                    
+                    # 要件定義書が存在する場合のみ含める
+                    system_content = ""
+                    if file1 is not None:
+                        system_content += f"《要件定義書》\n{file1.getvalue().decode('utf-8')}\n\n"
+                    system_content += f"《基本設計書》\n{file2.getvalue().decode('utf-8')}"
+                    
                     # messages2の初期化
                     st.session_state.messages2 = [
                         {"role": "system", "content": review_content},
@@ -304,9 +308,8 @@ if st.sidebar.button("設計書レビュー開始"):
                         with st.chat_message(message["role"]):
                             st.markdown(message["content"])
                 else:
-                    st.error("ファイルのアップロードに失敗しました")
+                    st.error("レビュー項目のアップロードに失敗しました")
             else:
-                st.error("レビュー項目のアップロードに失敗しました")
+                st.error("ファイルのアップロードに失敗しました")
     else:
-        st.warning("2つのファイルを選択し、レビュー項目を入力してください")
-
+        st.warning("基本設計書を選択し、レビュー項目を入力してください")
