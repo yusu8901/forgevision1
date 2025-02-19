@@ -8,7 +8,7 @@ load_dotenv()
 
 # OpenAI APIクライアントの初期化
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-# システムプロンプトの設定
+# モデルの設定
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "o3-mini"
 
@@ -25,7 +25,8 @@ st.title("設計書レビューAI")
 st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
 
 
-#######OPENAI API#######################################################
+#############################################################
+#OPENAI API
 
 if "messages1" not in st.session_state:
     st.session_state.messages1 = [
@@ -33,7 +34,7 @@ if "messages1" not in st.session_state:
             "role": "system",
             "content": (
                 """
-                基本設計書のレビューを行います。ユーザーにレビューしたい項目をヒアリングしてください。
+                あなたは基本設計書レビューアシスタントです。ユーザーと対話し、レビューしたい項目をヒアリング、ついかでレビューした方がいい項目の提案をしてください。
                 出力には、次の項目を絶対に絶対に絶対に含めて下さい。現在までの会話でユーザーがレビューしたい項目「レビュー決定項目」と、追加でレビューした方がいい項目「提案項目」をそれぞれリスト形式で構造的に絶対に含めてください。
                 追加でレビューした方がいい項目について、ユーザーがレビューしたい項目をもっと細分化したレビュー項目を提案してください。
                 提案したレビュー項目について、ユーザーが承諾すれば、「レビュー決定項目」の中に含めてください。
@@ -45,6 +46,7 @@ if "messages1" not in st.session_state:
                 ## 【レビュー決定項目】 
                 - ～～
                     - ～～
+                    - ～～
                 - ～～
                     - ～～
 
@@ -52,6 +54,7 @@ if "messages1" not in st.session_state:
                 - ～～
                     - ～～
                 - ～～
+                    - ～～
                     - ～～
 
                 現在のレビュー決定項目でよろしければ、左側の「設計書レビュー開始」ボタンを押してください!
@@ -136,7 +139,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
 # DIFY API関連の処理
 # ファイルのアップロード
 
-# 設計書レビュー用
+# Dify用
 def upload_file(file_content, filename, user):
     upload_url = "https://api.dify.ai/v1/files/upload"
     headers = {
@@ -162,7 +165,7 @@ def upload_file(file_content, filename, user):
         st.error(f"エラーが発生しました: {str(e)}")
         return None
 
-# 設計書レビュー用
+# Dify用
 def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blocking"):
     workflow_url = "https://api.dify.ai/v1/workflows/run"
     headers = {
