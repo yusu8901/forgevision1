@@ -133,7 +133,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
 
 
 # 設計書レビュー用
-def upload_file2(file_content, filename, user):
+def upload_file(file_content, filename, user):
     upload_url = "https://api.dify.ai/v1/files/upload"
     headers = {
         "Authorization": f"Bearer {os.getenv('API_KEY2')}",
@@ -159,7 +159,7 @@ def upload_file2(file_content, filename, user):
         return None
 
 # 設計書レビュー用
-def run_workflow2(file_id1, file_id2, review_request_id, user, response_mode="blocking"):
+def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blocking"):
     workflow_url = "https://api.dify.ai/v1/workflows/run"
     headers = {
         "Authorization": f"Bearer {os.getenv('API_KEY2')}",
@@ -217,16 +217,16 @@ if st.sidebar.button("設計書レビュー開始"):
     if file1 is not None and file2 is not None:
         with st.spinner("処理中..."):
             # ファイルをアップロード
-            file_id1 = upload_file2(file1.getvalue(), file1.name, user)
-            file_id2 = upload_file2(file2.getvalue(), file2.name, user)
+            file_id1 = upload_file(file1.getvalue(), file1.name, user)
+            file_id2 = upload_file(file2.getvalue(), file2.name, user)
 
             if file_id1 and file_id2:
                 # レビュー決定項目をテキストファイルとしてアップロード
-                review_request_id = upload_file2(st.session_state.request_response.encode(), "review_request.txt", user)
+                review_request_id = upload_file(st.session_state.request_response.encode(), "review_request.txt", user)
                 
                 if review_request_id:
                     # 設計書レビューワークフローを実行
-                    result2 = run_workflow2(file_id1, file_id2, review_request_id, user)
+                    result2 = run_workflow(file_id1, file_id2, review_request_id, user)
                     # messages2の初期化
                     st.session_state.messages2 = [
                         {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"},
