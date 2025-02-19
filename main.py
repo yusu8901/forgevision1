@@ -29,10 +29,6 @@ with st.sidebar:
     st.header("入力項目")
     file1 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
     file2 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
-    
-    if st.session_state.request_response:
-        st.write("現在のレビュー決定項目：")
-        st.write(st.session_state.request_response)
 
 
 #############################################################
@@ -68,6 +64,11 @@ if "messages1" not in st.session_state:
                     - ～～
 
                 現在のレビュー決定項目でよろしければ、左側の「設計書レビュー開始」ボタンを押してください!
+
+
+                参考情報：
+                基本設計書
+                {file2.getvalue().decode('utf-8') if file2 else ''}
                 """
             )
         },
@@ -76,13 +77,13 @@ if "messages1" not in st.session_state:
 
 
 
-if "messages2" not in st.session_state:
-    st.session_state.messages2 = [
-        {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"}
-    ]
+# if "messages2" not in st.session_state:
+#     st.session_state.messages2 = [
+#         {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"}
+#     ]
 
 # チャット履歴の表示（ワークフロー実行前）
-for message in st.session_state.messages1[1:]:
+for message in st.session_state.messages1:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
@@ -146,6 +147,11 @@ if prompt := st.chat_input("メッセージを入力してください"):
             response = st.write_stream(stream)
         st.session_state.messages2.append({"role": "assistant", "content": response})
 
+# サイドバーにレビュー決定項目を表示
+with st.sidebar:
+    if st.session_state.request_response:
+        st.write("現在のレビュー決定項目：")
+        st.write(st.session_state.request_response)
 
 #####################################################################
 # DIFY API関連の処理
