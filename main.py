@@ -119,7 +119,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
                 model=st.session_state["openai_model"],
-                messages1=[
+                messages=[
                     {"role": m["role"], "content": m["content"]}
                     for m in st.session_state.messages2
                 ],
@@ -128,15 +128,16 @@ if prompt := st.chat_input("メッセージを入力してください"):
             response = st.write_stream(stream)
         st.session_state.messages2.append({"role": "assistant", "content": response})
 
+
 #####################################################################
-
-
+# DIFY API関連の処理
+# ファイルのアップロード
 
 # 設計書レビュー用
 def upload_file(file_content, filename, user):
     upload_url = "https://api.dify.ai/v1/files/upload"
     headers = {
-        "Authorization": f"Bearer {os.getenv('API_KEY2')}",
+        "Authorization": f"Bearer {os.getenv('DIFY_API_KEY')}",
     }
     
     try:
@@ -162,7 +163,7 @@ def upload_file(file_content, filename, user):
 def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blocking"):
     workflow_url = "https://api.dify.ai/v1/workflows/run"
     headers = {
-        "Authorization": f"Bearer {os.getenv('API_KEY2')}",
+        "Authorization": f"Bearer {os.getenv('DIFY_API_KEY')}",
         "Content-Type": "application/json"
     }
 
@@ -202,8 +203,8 @@ def run_workflow(file_id1, file_id2, review_request_id, user, response_mode="blo
 # サイドバーにファイルアップロードウィジェットを配置
 with st.sidebar:
     st.header("入力項目")
-    file1 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
-    file2 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
+    file1 = st.file_uploader("要件定義書をアップロード(md)", type=['md'])
+    file2 = st.file_uploader("基本設計書をアップロード(md)", type=['md'])
     
     if st.session_state.request_response:
         st.write("現在のレビュー決定項目：")
@@ -222,15 +223,25 @@ if st.sidebar.button("設計書レビュー開始"):
 
             if file_id1 and file_id2:
                 # レビュー決定項目をテキストファイルとしてアップロード
-                review_request_id = upload_file(st.session_state.request_response.encode(), "review_request.txt", user)
+                # レビューテンプレートを読み込んで、request_responseを埋め込む
+                with open('review_request.txt', 'r', encoding='utf-8') as f:
+                    template = f.read()
+                review_content = template.replace('{{ request_response }}', st.session_state.request_response)
+                review_request_id = upload_file(review_content.encode(), "review_request.txt", user)
                 
                 if review_request_id:
                     # 設計書レビューワークフローを実行
                     result2 = run_workflow(file_id1, file_id2, review_request_id, user)
+                    system_content = (
+                        f"《要件定義書》\n{file1.getvalue().decode('utf-8')}\n\n"
+                        f"《基本設計書》\n{file2.getvalue().decode('utf-8')}"
+                    )
                     # messages2の初期化
                     st.session_state.messages2 = [
-                        {"role": "system", "content": "ユーザーの要望に基づいてレビューを再出力してください。"},
-                        {"role": "assistant", "content": result2["data"]["outputs"]["text"]}
+                        {"role": "system", "content": review_content},
+                        {"role": "user", "content": system_content, "visible": False},
+                        {"role": "assistant", "content": result2["data"]["outputs"]["text"]},
+                        
                     ]
                     # ワークフロー実行フラグを設定
                     st.session_state.workflow_executed = True
