@@ -8,9 +8,10 @@ load_dotenv()
 
 # OpenAI APIクライアントの初期化
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 # モデルの設定
-if "openai_model" not in st.session_state:
-    st.session_state["openai_model"] = "o3-mini"
+# if "openai_model" not in st.session_state:
+#     st.session_state["openai_model"] = "o1"
 
 # ワークフロー実行状態の追跡
 if "workflow_executed" not in st.session_state:
@@ -21,8 +22,8 @@ if "request_response" not in st.session_state:
     st.session_state["request_response"] = ""
 
 # Streamlitのメイン処理
-st.title("設計書レビューAI")
-st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
+st.title("基本設計書レビューAI")
+st.write("まず、基本設計書をアップロードしてください。その後、AIアシスタントとチャットを行い、レビューしたい項目を入力してください。")
 
 # サイドバーにファイルアップロードウィジェットを配置
 with st.sidebar:
@@ -40,12 +41,23 @@ if "messages1" not in st.session_state and file2:
             "role": "system",
             "content": (
                 f"""
-                あなたは基本設計書レビューアシスタントです。ユーザーと対話し、レビューしたい項目をヒアリング、ついかでレビューした方がいい項目の提案をしてください。
-                出力には、次の項目を絶対に絶対に絶対に含めて下さい。現在までの会話でユーザーがレビューしたい項目「レビュー決定項目」と、追加でレビューした方がいい項目「提案項目」をそれぞれリスト形式で構造的に絶対に含めてください。
-                追加でレビューした方がいい項目について、ユーザーがレビューしたい項目をもっと細分化したレビュー項目を提案してください。
-                提案したレビュー項目について、ユーザーが承諾すれば、「レビュー決定項目」の中に含めてください。
-                メッセージの最後に必ず次の文章を付けてください。現在のレビュー決定項目でよろしければ、左側の「設計書レビュー開始」ボタンを押してください!
-                出力に【レビュー決定項目】 は絶対に絶対に含めてください。
+                あなたは「**基本設計書レビューアシスタント**」です。以下の指示に従って、ユーザーからレビューしたい項目をヒアリングし、追加でレビューした方がよい項目を提案してください。
+
+                1. ユーザーがレビューしたい項目（**レビュー決定項目**）をヒアリングする  
+                2. ユーザーのレビュー希望項目をより細分化し、追加でレビューした方がいい項目（**提案項目**）を5個提示する  
+                3. 参考情報の基本設計書から、追加でレビューした方がいい項目を5個提示する
+                4. ユーザーが提案項目を承諾した場合、**「レビュー決定項目」** に統合して更新する  
+                5. 最終的に、レビューが必要な項目がすべてそろった状態で出力する  
+
+                ---
+
+                ## **出力の絶対要件**
+                - **出力には必ず次の2つのリストを含めること。**
+                    - **【レビュー決定項目】**（ユーザーが最終的にレビューすると決めた項目）
+                    - **【提案項目】**（追加でレビューした方がいい項目）
+                - **【レビュー決定項目】** と **【提案項目】** は、**リスト形式**で記述すること。
+                - メッセージの最後には、必ず次の文を追加すること。  
+                    > 現在のレビュー決定項目でよろしければ、左側の「設計書レビュー開始」ボタンを押してください!
 
                 出力形式：
 
@@ -126,7 +138,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
         response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "渡されたテキストから、レビュー決定項目だけを抜き出して、リスト形式で出力してください。それ以外のことは一切出力しないでください"},
+                    {"role": "system", "content": "渡されたテキストから、レビュー決定項目だけを構造的に抜き出して、リスト形式で出力してください。それ以外のことは一切出力しないでください"},
                     {"role": "user", "content": response}
                 ]
             )
@@ -141,7 +153,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
         # OpenAI APIでの応答処理
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model=st.session_state["openai_model"],
+                model="o1",
                 messages=[
                     {"role": m["role"], "content": m["content"]}
                     for m in st.session_state.messages2
