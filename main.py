@@ -24,6 +24,7 @@ if "request_response" not in st.session_state:
 st.title("設計書レビューAI")
 st.write("2つのファイルとレビュー項目を指定して、ワークフローを実行します。")
 
+
 #######OPENAI API#######################################################
 
 if "messages1" not in st.session_state:
@@ -89,15 +90,16 @@ if prompt := st.chat_input("メッセージを入力してください"):
 
         # OpenAI APIでの応答処理
         with st.chat_message("assistant"):
-            stream = client.chat.completions.create(
-                model="o1",
-                messages=[
-                    {"role": m["role"], "content": m["content"]}
-                    for m in st.session_state.messages1
-                ],
-                stream=True,
-            )
-            response = st.write_stream(stream)
+            with st.spinner("回答生成中..."):
+                stream = client.chat.completions.create(
+                    model="o1",
+                    messages=[
+                        {"role": m["role"], "content": m["content"]}
+                        for m in st.session_state.messages1
+                    ],
+                    stream=True,
+                )
+                response = st.write_stream(stream)
         st.session_state.messages1.append({"role": "assistant", "content": response})
 
         # レビュー決定項目の取得
@@ -217,7 +219,7 @@ user = "difyuser"
 # サイドバーに実行ボタンを配置
 if st.sidebar.button("設計書レビュー開始"):
     if file1 is not None and file2 is not None:
-        with st.spinner("処理中..."):
+        with st.spinner("レビュー中..."):
             # ファイルをアップロード
             file_id1 = upload_file(file1.getvalue(), file1.name, user)
             file_id2 = upload_file(file2.getvalue(), file2.name, user)
